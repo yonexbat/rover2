@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using System.Net.WebSockets;
 
 namespace Rover2Server
 {
@@ -25,10 +26,36 @@ namespace Rover2Server
                 app.UseDeveloperExceptionPage();
             }
 
-            app.Run(async (context) =>
+            var webSocketOptions = new WebSocketOptions()
             {
-                await context.Response.WriteAsync("Hello World!");
+                KeepAliveInterval = TimeSpan.FromMinutes(5),
+                ReceiveBufferSize = 4 * 1024
+            };
+            app.UseWebSockets(webSocketOptions);
+
+            app.Use(async (context, next) =>
+            {
+                if (context.Request.Path == "/ws")
+                {
+                    if (context.WebSockets.IsWebSocketRequest)
+                    {
+                        WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
+                        await Commander.Echo(context, webSocket);
+                    }
+                    else
+                    {
+                        context.Response.StatusCode = 400;
+                    }
+                }
+                else
+                {
+                    await next();
+                }
+
             });
+
+            app.UseFileServer();
+
         }
     }
 }
