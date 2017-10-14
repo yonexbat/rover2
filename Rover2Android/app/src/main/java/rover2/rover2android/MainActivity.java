@@ -5,6 +5,7 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.text.method.ScrollingMovementMethod;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -42,7 +43,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
-        //Button
+        //Send Button
         final Button buttonSend = (Button) findViewById(R.id.buttonSend);
         buttonSend.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -50,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        //Start button
         final Button buttonStart = (Button) findViewById(R.id.buttonStart);
         buttonStart.setOnClickListener(new View.OnClickListener(){
             public void onClick(View v) {
@@ -57,12 +59,30 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        //Clear button
+        final Button buttonClear = (Button) findViewById(R.id.buttonClear);
+        buttonClear.setOnClickListener(new View.OnClickListener(){
+            public void onClick(View v){
+                clearLog();
+            }
+        });
+
+        //Scrolling
+        TextView tv = (TextView) findViewById(R.id.textViewReceived);
+        tv.setMovementMethod(new ScrollingMovementMethod());
+
+    }
+
+    private void clearLog(){
+        TextView tv = (TextView) findViewById(R.id.textViewReceived);
+        tv.setText("");
     }
 
     private void sendCommandToArduino(final String message)
     {
         if(message == null || message.equals("Init") || message.equals(""))
         {
+            this.output("message empty");
             return;
         }
         TextView tv  = (TextView) findViewById(R.id.editTextAdress);
@@ -78,9 +98,13 @@ public class MainActivity extends AppCompatActivity {
 
         Response response = null;
         try {
+            output("sending command to arduino.");
+            output("url: " + url);
             response = client.newCall(request).execute();
             String body = response.body().string();
+            output("got answer: " + body);
         } catch (IOException e) {
+            output("Exception: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -93,6 +117,7 @@ public class MainActivity extends AppCompatActivity {
         }
         @Override
         public void onMessage(WebSocket webSocket, String text) {
+            output("got text: " + text);
             sendCommandToArduino(text);
         }
 
@@ -121,6 +146,12 @@ public class MainActivity extends AppCompatActivity {
         Request request = new Request.Builder()
                 .url("ws://rover2.azurewebsites.net/ws")
                 .build();
+
+        //close pervious socket
+        if(this.socket != null)
+        {
+            this.socket.cancel();
+        }
         this.socket = client.newWebSocket(request, listener);
 
         client.dispatcher().executorService().shutdown();
@@ -129,7 +160,12 @@ public class MainActivity extends AppCompatActivity {
     public void sendText() {
         TextView tv  = (TextView) this.findViewById(R.id.textViewReceived);
         String text = tv.getText().toString();
-        this.socket.send(text);
+        if(this.socket != null) {
+            this.socket.send(text);
+        }
+        else {
+            this.output("Socket is null");
+        }
     }
 
     private void output(final String output) {
@@ -137,7 +173,7 @@ public class MainActivity extends AppCompatActivity {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                textView.setText(textView.getText().toString() + "\n\n" + output);
+                textView.setText(textView.getText().toString() + "\n" + output);
             }
         });
     }
