@@ -11,10 +11,7 @@ import okio.ByteString;
 
 
 public class WebSocketClient {
-
-
-
-
+    
     private WebSocket socket;
     private IWebSocketReceiver receiver;
 

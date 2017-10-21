@@ -15,6 +15,18 @@ namespace Rover2Server
 
         public static IList<WebSocket> sockets = new List<WebSocket>();
 
+        private static byte[] _image;
+
+        public static void SetImage(byte[] image)
+        {
+            _image = image;
+        }
+
+        public static byte[] GetImage()
+        {
+            return _image;
+        }
+
         public static async Task Echo(HttpContext context, WebSocket webSocket)
         {
             sockets.Add(webSocket);
