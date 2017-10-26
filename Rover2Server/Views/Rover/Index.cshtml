@@ -8,13 +8,153 @@
 @{
 }
 
-@using (Html.BeginForm("Index", "Rover")) { 
+<html>
+    <head>
+        <style>
+            #roverImage {
+                transform: rotate(90deg);
+            }
 
-    @Html.TextBoxFor(m => m.Command)
-    <input type="submit" value="Send">
-}
+            td {
+                background-color: yellow;
+            }
+        </style>
+        <script type="text/javascript">
 
-<div>
-    <h4>Image</h4>
-    <img id="roverImage" src="Rover/Image" />
-</div>
+            var imageNr = 0;
+
+            
+            document.addEventListener("DOMContentLoaded", function (event) {
+                window.setInterval(function () {
+                    imageNr++;
+                    var div = document.getElementById("roverImageDiv");
+                    var image = document.getElementById("roverImage");
+                    image.remove();
+
+                    var newImage = document.createElement("img");
+                    newImage.id = 'roverImage';
+                    newImage.src = 'Rover/Image?number=' + imageNr;
+
+                    
+
+                    div.appendChild(newImage);
+                    
+                }, 1000) 
+            });
+
+            function sendCommand(command)
+            {
+                var commandEl = document.getElementById("Command");
+                commandEl.value = command;
+
+                var form = document.getElementsByTagName('form')[0];
+                form.submit();
+            }
+
+            function sendCommand2(command)
+            {
+
+                debugger;
+                var speedIncrease = document.getElementById("SpeedIncrease").value;
+                var servoIncrease = document.getElementById("ServoIncrease").value;
+
+                speedIncrease = Number.parseInt(speedIncrease);
+                servoIncrease = Number.parseInt(servoIncrease);
+
+                var middle = 1500;
+
+                var serverCommand = '1 1500 ';
+                switch (command)
+                {
+                    case 'forward':
+                        serverCommand = '1 ' + (middle + speedIncrease) + ' ';
+                        break;
+                    case 'backward':
+                        serverCommand = '1 ' + (middle - speedIncrease) + ' ';
+                        break;
+                    case 'left':
+                        serverCommand = '2 ' + (middle + servoIncrease) + ' ';
+                        break;
+                    case 'right':
+                        serverCommand = '2 ' + (middle - servoIncrease) + ' ';
+                        break;
+                    case 'center':
+                        serverCommand = '2 ' + (middle) + ' ';
+                        break;
+                }
+                
+
+                
+
+                var opts = { 'Command': serverCommand};
+
+                fetch('/Rover/SendCommand', {
+                    method: 'post',
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(opts)
+                }).then(function (response) {
+                    var jsonObj = response.json();
+                    return jsonObj;
+                }).then(function (jsonObj) {
+                    debugger
+                }).catch(function (error) {
+                    alert(error);
+                });
+
+            }
+        </script>
+    </head>
+    <body>
+        @using (Html.BeginForm("Index", "Rover"))
+        {
+            <div>
+                @Html.TextBoxFor(m => m.Command)
+                <input type="submit" value="Send">
+            </div>
+            <div>
+                @Html.TextBoxFor(m => m.SpeedIncrease)
+               
+            </div>
+            <div>
+                @Html.TextBoxFor(m => m.ServoIncrease)
+            </div>
+        }
+
+
+        <table>
+            <tbody>
+                <tr>
+                    <td></td>
+                    <td onclick="sendCommand2('forward')">forward</td>
+                    <td></td>
+                </tr>
+
+                <tr>
+                    <td onclick="sendCommand2('left')">left</td>
+                    <td>
+                        <span  onclick="sendCommand2('stop')">stop</span>
+                        <span onclick="sendCommand2('center')">straight</span>
+                    </td>
+                    <td onclick="sendCommand2('right')">right</td>
+                </tr>
+
+                <tr>
+                    <td></td>
+                    <td  onclick="sendCommand2('backward')">backward</td>
+                    <td></td>
+                </tr>
+
+            </tbody>
+        </table>
+
+
+        <div>
+            <h4>Image</h4>
+            <div id="roverImageDiv">
+                <img id="roverImage" src="Rover/Image" />
+            </div>
+        </div>
+    </body>
+</html>

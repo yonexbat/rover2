@@ -42,10 +42,25 @@ namespace Rover2Server.Controllers
             return Content("Ok");
         }
 
-        public async Task<IActionResult> Image()
+        public async Task<IActionResult> Image(int? number)
         {
             byte[] image = Commander.GetImage();
+            if(image == null)
+            {
+                return Redirect("/cat.png");
+            }
             return File(image, "image/jpeg");
         }
+
+        public async Task<JsonResult> SendCommand([FromBody] CommandViewModel vm)
+        {
+            if (!string.IsNullOrWhiteSpace(vm.Command))
+            {
+                Commander.SendString(vm.Command);
+            }
+
+            return Json("command ok");
+        }
+
     }
 }

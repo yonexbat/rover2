@@ -12,9 +12,12 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.TextView;
 import android.widget.Toast;
 
+
+import java.text.SimpleDateFormat;
 
 import rover2.rover2android.bridge.Bridge;
 import rover2.rover2android.camera.CameraPreview;
@@ -23,7 +26,7 @@ import rover2.rover2android.serial.UsbSerial;
 public class MainActivity extends AppCompatActivity {
 
     private Bridge bridge = new Bridge();
-    private CameraPreview cameraPreview;
+
 
 
     @Override
@@ -32,9 +35,20 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        bridge.onCreate(this);
+        bridge.onCreate(this, savedInstanceState);
 
+        this.hookupButtons();
 
+        //Scrolling
+        TextView tv = (TextView) findViewById(R.id.textViewLog);
+        tv.setMovementMethod(new ScrollingMovementMethod());
+
+        //Keep Sceen alive
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+    }
+
+    private void hookupButtons(){
 
         //Send to websocket Button
         final Button buttonSend = (Button) findViewById(R.id.buttonSendToWebsocket);
@@ -69,22 +83,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        //Scrolling
-        TextView tv = (TextView) findViewById(R.id.textViewLog);
-        tv.setMovementMethod(new ScrollingMovementMethod());
-
-        if (null == savedInstanceState) {
-            this.setCameraPreview(CameraPreview.newInstance());
-            getFragmentManager().beginTransaction()
-                    .replace(R.id.cameraPlaceholder, getCameraPreview())
-                    .commit();
-
-        }
-
-        //Keep Sceen alive
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
-
     }
 
     public Bridge getBridge()
@@ -95,6 +93,12 @@ public class MainActivity extends AppCompatActivity {
     private void clearLog(){
         TextView tv = (TextView) findViewById(R.id.textViewLog);
         tv.setText("");
+    }
+
+    public boolean isSendPictures()
+    {
+        final CheckBox checkBox = (CheckBox) findViewById(R.id.checkBoxSendPicture);
+        return checkBox.isChecked();
     }
 
     public void sendTextToWebSocket() {
@@ -110,11 +114,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void output(final String output) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+        String time = sdf.format(new java.util.Date());
+        final String formattedOutput = time + " " + output;
         final TextView textView = (TextView) findViewById(R.id.textViewLog);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                textView.setText(textView.getText().toString() + "\n" + output);
+                textView.setText(formattedOutput +  "\n" + textView.getText().toString());
             }
         });
     }
@@ -151,13 +158,5 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
-    }
-
-    public CameraPreview getCameraPreview() {
-        return cameraPreview;
-    }
-
-    public void setCameraPreview(CameraPreview cameraPreview) {
-        this.cameraPreview = cameraPreview;
     }
 }

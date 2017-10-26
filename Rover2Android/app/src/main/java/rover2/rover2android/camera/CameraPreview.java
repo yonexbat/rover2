@@ -10,6 +10,8 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.Point;
@@ -44,6 +46,7 @@ import android.view.ViewGroup;
 import android.widget.Toast;
 
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -119,8 +122,6 @@ public class CameraPreview extends Fragment
      * Max preview height that is guaranteed by Camera2 API
      */
     private static final int MAX_PREVIEW_HEIGHT = 1080;
-
-
 
 
     /**
@@ -224,10 +225,6 @@ public class CameraPreview extends Fragment
      */
     private ImageReader mImageReader;
 
-    /**
-     * This is the output file for our picture.
-     */
-    private File mFile;
 
     private IImageReceiver imageReceiver;
 
@@ -242,7 +239,7 @@ public class CameraPreview extends Fragment
         public void onImageAvailable(ImageReader reader) {
 
             MainActivity mainActivity = (MainActivity) CameraPreview.this.getActivity();
-            mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mFile, mainActivity.getBridge()));
+            mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mainActivity.getBridge()));
         }
     };
 
@@ -435,7 +432,6 @@ public class CameraPreview extends Fragment
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-        mFile = new File(getActivity().getExternalFilesDir(null), "pic.jpg");
     }
 
     @Override
@@ -455,7 +451,7 @@ public class CameraPreview extends Fragment
         MainActivity mainActivity = (MainActivity) this.getActivity();
         if(mainActivity != null)
         {
-            mainActivity.setCameraPreview(this);
+            mainActivity.getBridge().setCameraPreview(this);
         }
     }
 
@@ -782,13 +778,15 @@ public class CameraPreview extends Fragment
      */
     private void lockFocus() {
         try {
-            // This is how to tell the camera to lock focus.
-            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
-                    CameraMetadata.CONTROL_AF_TRIGGER_START);
-            // Tell #mCaptureCallback to wait for the lock.
-            mState = STATE_WAITING_LOCK;
-            mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback,
-                    mBackgroundHandler);
+            if(mPreviewRequestBuilder != null && mCaptureSession != null) {
+                // This is how to tell the camera to lock focus.
+                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
+                        CameraMetadata.CONTROL_AF_TRIGGER_START);
+                // Tell #mCaptureCallback to wait for the lock.
+                mState = STATE_WAITING_LOCK;
+                mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback,
+                        mBackgroundHandler);
+            }
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
@@ -843,8 +841,8 @@ public class CameraPreview extends Fragment
                 public void onCaptureCompleted(@NonNull CameraCaptureSession session,
                                                @NonNull CaptureRequest request,
                                                @NonNull TotalCaptureResult result) {
-                    showToast("Saved: " + mFile);
-                    Log.d(TAG, mFile.toString());
+
+                    Log.d(TAG, "completed");
                     unlockFocus();
                 }
             };
@@ -918,16 +916,12 @@ public class CameraPreview extends Fragment
          * The JPEG image
          */
         private final Image mImage;
-        /**
-         * The file we save the image into.
-         */
-        private final File mFile;
+
 
         private IImageReceiver binaryReceiver;
 
-        public ImageSaver(Image image, File file, IImageReceiver binaryReceiver) {
+        public ImageSaver(Image image, IImageReceiver binaryReceiver) {
             mImage = image;
-            mFile = file;
             this.binaryReceiver = binaryReceiver;
         }
 
@@ -940,26 +934,21 @@ public class CameraPreview extends Fragment
             ByteBuffer buffer = mImage.getPlanes()[0].getBuffer();
             byte[] bytes = new byte[buffer.remaining()];
             buffer.get(bytes);
-            FileOutputStream output = null;
+
+            Bitmap bitmapImage = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, null);
+            ByteArrayOutputStream outputstream = new ByteArrayOutputStream();
+            bitmapImage.compress(Bitmap.CompressFormat.JPEG, 40, outputstream);
+
+            bytes = outputstream.toByteArray();
+
             try {
-                output = new FileOutputStream(mFile);
-                output.write(bytes);
 
                 if(binaryReceiver != null) {
                     binaryReceiver.binaryReceived(bytes);
                 }
 
-            } catch (IOException e) {
-                e.printStackTrace();
             } finally {
                 mImage.close();
-                if (null != output) {
-                    try {
-                        output.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
             }
         }
 

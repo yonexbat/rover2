@@ -5,11 +5,15 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Bundle;
 import android.widget.Toast;
 
 import java.nio.charset.StandardCharsets;
 
 import rover2.rover2android.MainActivity;
+import rover2.rover2android.R;
+import rover2.rover2android.camera.CameraPreview;
+import rover2.rover2android.util.UiThreadTimer;
 import rover2.rover2android.camera.IImageReceiver;
 import rover2.rover2android.serial.ISerialDataReceiver;
 import rover2.rover2android.serial.UsbSerial;
@@ -23,6 +27,7 @@ public class Bridge implements IImageReceiver {
     private UsbSerial usbSerial = new UsbSerial();
     private WebSocketClient webSocketClient;
     private BroadcastReceiver broadcastReceiver;
+    private CameraPreview cameraPreview;
 
 
     public Bridge(){
@@ -48,7 +53,7 @@ public class Bridge implements IImageReceiver {
         this.mainActivity.registerReceiver(broadcastReceiver, filter);
     }
 
-    public void onCreate(MainActivity mainActivity)
+    public void onCreate(MainActivity mainActivity, Bundle savedInstanceState)
     {
         this.mainActivity = mainActivity;
         this.usbSerial.onCreate(mainActivity, new ISerialDataReceiver() {
@@ -76,6 +81,13 @@ public class Bridge implements IImageReceiver {
                 onReceiveBroadcast(context, intent);
             }
         };
+
+        if (null == savedInstanceState) {
+            this.setCameraPreview(CameraPreview.newInstance());
+            this.mainActivity.getFragmentManager().beginTransaction()
+                    .replace(R.id.cameraPlaceholder, getCameraPreview())
+                    .commit();
+        }
     }
 
     public void onReceiveBroadcast(Context context, Intent intent) {
@@ -98,8 +110,39 @@ public class Bridge implements IImageReceiver {
         }
     }
 
+    public CameraPreview getCameraPreview() {
+        return cameraPreview;
+    }
+
+    public void setCameraPreview(CameraPreview cameraPreview) {
+        this.cameraPreview = cameraPreview;
+    }
+
     public void start(){
+
+
         this.webSocketClient.startSocketListener();
+
+        //Send pictures to server if required
+        if(this.mainActivity.isSendPictures()) {
+
+            UiThreadTimer cameraTimer = new UiThreadTimer(new Runnable() {
+                @Override
+                public void run() {
+                    getCameraPreview().takePicture();
+                }
+            });
+            cameraTimer.start(2000);
+        }
+
+        //Reconnect if connection lost
+        UiThreadTimer webSocketTimer = new UiThreadTimer(new Runnable() {
+            @Override
+            public void run() {
+                Bridge.this.webSocketClient.checkConnection();
+            }
+        });
+        webSocketTimer.start(10000);
     }
 
     public void sendTextToWebsocket(String message)
