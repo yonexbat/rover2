@@ -17,6 +17,8 @@
 
             td {
                 background-color: yellow;
+                width: 100px;
+                height: 100px;
             }
         </style>
         <script type="text/javascript">
@@ -73,10 +75,10 @@
                         serverCommand = '1 ' + (middle - speedIncrease) + ' ';
                         break;
                     case 'left':
-                        serverCommand = '2 ' + (middle + servoIncrease) + ' ';
+                        serverCommand = '2 ' + (middle - servoIncrease) + ' ';
                         break;
                     case 'right':
-                        serverCommand = '2 ' + (middle - servoIncrease) + ' ';
+                        serverCommand = '2 ' + (middle + servoIncrease) + ' ';
                         break;
                     case 'center':
                         serverCommand = '2 ' + (middle) + ' ';
@@ -134,8 +136,8 @@
                 <tr>
                     <td onclick="sendCommand2('left')">left</td>
                     <td>
-                        <span  onclick="sendCommand2('stop')">stop</span>
-                        <span onclick="sendCommand2('center')">straight</span>
+                        <div  onclick="sendCommand2('stop')" style="background-color: red; width: 100%; height: 50%;">stop</div>
+                        <div onclick="sendCommand2('center')">straight</div>
                     </td>
                     <td onclick="sendCommand2('right')">right</td>
                 </tr>
